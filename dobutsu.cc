@@ -1,17 +1,11 @@
 #include "dobutsu.h"
 
-const char *Ptype::strs[6]={0,"HI","ZO","KI","NI","LI"};
+const char *Ptype::strs[4]={0,"SI","GO","KI"};
 const Point directions[8]={Point(1,-1),Point(0,-1),Point(-1,-1),Point(1,0),Point(-1,0),Point(1,1),Point(0,1),Point(-1,1)};
 const int canMoves[5]={
-  0x2, // baby
-  0xa5, // elephant
-  0x5a, // giraffe
-#if 0
-  0xfa, // chiken
-#else
-  0x5f, // chiken
-#endif
-  0xff, // lion
+  0x7, // silver
+  0x1a, // gold
+  0x1f, // king
 };
 
 const int STAND=0xff;
@@ -52,10 +46,10 @@ vMove readMoveFile(string const& fileName)
 ostream& outPosition(ostream& os,int pos)
 {
   if(pos==0xff) return os<<"00";
-  int x=pos/4,y=pos%4;
+  int x=pos/5,y=pos%5;
   assert(0<=x && x<=2);
-  assert(0<=y && y<=3);
-  return os << "CBA"[x] << "1234"[y];
+  assert(0<=y && y<=4);
+  return os << "CBA"[x] << "12345"[y];
 }
 ostream& outPtype(ostream& os,int ptype)
 {
@@ -74,22 +68,25 @@ ostream& operator<<(ostream& os,Move const& m){
 
 State::State(string const& s)
 {
-  assert(s.length()==3*3*4+7);
+  /* 3文字 * 横3マス * 縦5マス + 持ち駒６文字 + 先後一文字 */
+  assert(s.length()==3*3*5+7);
   for(int x=0;x<3;x++)
-    for(int y=0;y<4;y++)
-      board[x*4+y]=(char)Ptype::makePtype(s,y*9+(2-x)*3);
-  for(int i=0;i<6;i++) stands[i]=s[3*3*4+i]-'0';
-  if(s[3*3*4+6]=='+') turn=BLACK;
+    for(int y=0;y<5;y++)
+      /* 1コマ３文字で表すのでy*9が一行 */
+      /* ex. "-GO-KI-SI" */
+      board[x*5+y]=(char)Ptype::makePtype(s,y*9+(2-x)*3);
+  for(int i=0;i<6;i++) stands[i]=s[3*3*5+i]-'0';
+  if(s[3*3*5+6]=='+') turn=BLACK;
   else{
-    if(s[3*3*4+6]!='-') throw FormatException();
+    if(s[3*3*5+6]!='-') throw FormatException();
     turn=WHITE;
   }
 }
 
 ostream& operator<<(ostream& os,State const& s){
-  for(int y=0;y<4;y++){
+  for(int y=0;y<5;y++){
     for(int x=2;x>=0;x--)
-      os << Ptype::str(s.board[x*4+y]);
+      os << Ptype::str(s.board[x*5+y]);
     os << "\n";
   }
   for(int i=0;i<6;i++)
@@ -104,7 +101,7 @@ ostream& operator<<(ostream& os,State const& s){
 bool operator==(State const& s1, State const& s2)
 {
   if(s1.turn!=s2.turn) return false;
-  for(int i=0;i<12;i++) if(s1.board[i]!=s2.board[i]) return false;
+  for(int i=0;i<15;i++) if(s1.board[i]!=s2.board[i]) return false;
   for(int i=0;i<6;i++) if(s1.stands[i]!=s2.stands[i]) return false;
   return true;
 }

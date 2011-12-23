@@ -15,8 +15,8 @@ struct Move{
   {
     assert(pl==BLACK || pl==WHITE);
     assert(0<=ptype && ptype<16);
-    assert((0<=from && from<12)||from==255);
-    assert(0<=to && to<12);
+    assert((0<=from && from<15)||from==255);
+    assert(0<=to && to<15);
     v=(pl==BLACK ? 0 : (1<<31)) |
       (ptype<<16) |
       (from<<8) |

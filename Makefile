@@ -1,4 +1,5 @@
-all : makeAllState makeWinLose checkState checkcsa findDropBaby findZugZwang longestWin maxbf makeCheckmate checkCheckState
+#all : makeAllState makeWinLose checkState checkcsa findDropBaby findZugZwang longestWin maxbf makeCheckmate checkCheckState testAll
+all : makeAllState makeWinLose checkState testAll
 #CXX = g++-4.3
 CXX = /usr/bin/g++
 # CXX = g++-4 -m64
@@ -90,4 +91,4 @@ minTree : minTree.o dobutsu.o allStateTable.o winLoseTable.o
 
 testAll.o : dobutsu.h
 testAll : testAll.o dobutsu.o
-	$(CXX) -o testAll testAll.o dobutsu.o -lcppunit
+	$(CXX) -o testAll testAll.o dobutsu.o -L/usr/local/Cellar/cppunit/1.12.1/lib/ -lcppunit

@@ -21,13 +21,17 @@ int main()
     hUint64::const_iterator it=v.find(is);
     if(it==v.end()){
       State s(is,BLACK);
+      /*
+      std::cout << "Iterate" << std::endl;
+      std::cout << s << std::endl;
+      */
       //      std::cout << s << ",isWin==" << s.isWin()  << std::endl;
       allIS.push_back(is);
       v.insert(is);
       if(!s.isWin() && !s.isLose()){
-	vUint64 ns=s.nextStates();
-	for(size_t i=0;i<ns.size();i++)
-	  q.push_back(ns[i]);
+        vUint64 ns=s.nextStates();
+        for(size_t i=0;i<ns.size();i++)
+          q.push_back(ns[i]);
       }
     }
   }

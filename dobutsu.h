@@ -33,6 +33,15 @@ struct FormatException{
 struct InconsistentException{
 };
 
+struct NoLionException{
+};
+
+struct InvalidMoveException{
+};
+
+struct InconsistentPTypeException{
+};
+
 /**
  * プレイヤー
  * 囲碁にならって先手番をBLACK, 後手番をWHITEとする．
@@ -55,11 +64,9 @@ static int makePtypeChar(char c0,char c1);
 struct Ptype{
   enum {
     EMPTY=0,
-    BABY=1,
-    ELEPHANT=2,
-    GIRAFFE=3,
-    CHICKEN=4,
-    LION=5,
+    SILVER=1,
+    GOLD=2,
+    KING=3,
   };
   /**
    * ptypeが負の時はWHITEの駒を表す
@@ -85,7 +92,8 @@ struct Ptype{
       type= -type;
     }
     if(type>=6)
-      throw InconsistentException();
+      //throw InconsistentException();
+      throw InconsistentPTypeException();
     return pstr+strs[type];
   }
 };
@@ -142,8 +150,8 @@ extern const int canMoves[5];
 static inline int makePosition(int x, int y)
 {
   assert(0<=x && x<3);
-  assert(0<=y && y<4);
-  return x*4+y;
+  assert(0<=y && y<5);
+  return x*5+y;
 }
 /**
  * 駒台を表すPosition
@@ -154,25 +162,26 @@ extern const int STAND;
  */
 static inline int pos2X(int pos)
 {
-  assert(0<=pos && pos<12);
-  return pos/4;
+  assert(0<=pos && pos<15);
+  return pos/5;
 }
 /**
  * Positionからyを取り出す
  */
 static inline int pos2Y(int pos)
 {
-  assert(0<=pos && pos<12);
-  return pos%4;
+  assert(0<=pos && pos<15);
+  return pos%5;
 }
 /**
  * Positionを180度回転する
  * (2-x)*4+(3-y)=8+3-(x*4+y)=11-pos
+ * 3*5将棋では (2-x)*5+(4-y)=10+4-(x*5+y)=14-pos
  */
 static inline int rot180(int pos)
 {
-  assert(0<=pos && pos<12);
-  return 11-pos;
+  assert(0<=pos && pos<15);
+  return 14-pos;
 }
 /**
  * 文字2文字からpositionを作る
@@ -183,9 +192,9 @@ static inline int makePosition(char c1,char c2)
   if(c1=='0' && c2=='0') return STAND;
   if('A'<= c1 && c1<='C'){
     int x=2-(c1-'A');
-    if('1'<= c2 && c2<='4'){
+    if('1'<= c2 && c2<='5'){
       int y=c2-'1';
-      return x*4+y;
+      return x*5+y;
     }
   }
   else throw FormatException();
@@ -205,8 +214,8 @@ struct Move{
   {
     assert(pl==BLACK || pl==WHITE);
     assert(0<=ptype && ptype<16);
-    assert((0<=from && from<12)||from==255);
-    assert(0<=to && to<12);
+    assert((0<=from && from<15)||from==255);
+    assert(0<=to && to<15);
     return (pl==BLACK ? 0 : (1<<31)) | (ptype<<16) | (from<<8) | to;
   }
   Move(Player pl,int from, int to, int ptype)
@@ -234,9 +243,9 @@ ostream& operator<<(ostream& os,Move const& m);
  */
 struct State{
   /**
-   * 盤面の12マスに入るptype
+   * 盤面の15マスに入るptype
    */
-  char board[3*4];
+  char board[3*5];
   /**
    * それぞれのプレイヤーの駒台の駒の個数
    * 2 * 3
@@ -251,16 +260,14 @@ struct State{
    */
   State(){
     for(int x=0;x<3;x++)
-      for(int y=0;y<4;y++)
-	board[x*4+y]=Ptype::EMPTY;
-    board[0*4+0]=(char)Ptype::makePtype(WHITE,Ptype::ELEPHANT);
-    board[1*4+0]=(char)Ptype::makePtype(WHITE,Ptype::LION);
-    board[2*4+0]=(char)Ptype::makePtype(WHITE,Ptype::GIRAFFE);
-    board[1*4+1]=(char)Ptype::makePtype(WHITE,Ptype::BABY);
-    board[1*4+2]=(char)Ptype::makePtype(BLACK,Ptype::BABY);
-    board[0*4+3]=(char)Ptype::makePtype(BLACK,Ptype::GIRAFFE);
-    board[1*4+3]=(char)Ptype::makePtype(BLACK,Ptype::LION);
-    board[2*4+3]=(char)Ptype::makePtype(BLACK,Ptype::ELEPHANT);
+      for(int y=0;y<5;y++)
+        board[x*5+y]=Ptype::EMPTY;
+        board[0*5+0]=(char)Ptype::makePtype(WHITE,Ptype::SILVER);
+        board[1*5+0]=(char)Ptype::makePtype(WHITE,Ptype::KING);
+        board[2*5+0]=(char)Ptype::makePtype(WHITE,Ptype::GOLD);
+        board[0*5+4]=(char)Ptype::makePtype(BLACK,Ptype::GOLD);
+        board[1*5+4]=(char)Ptype::makePtype(BLACK,Ptype::KING);
+        board[2*5+4]=(char)Ptype::makePtype(BLACK,Ptype::SILVER);
     for(int i=0;i<6;i++) stands[i]=0;
     turn=BLACK;
   }
@@ -287,15 +294,15 @@ struct State{
     State s;
     int i=0;
     for(int x=0;x<3;x++)
-      for(int y=0;y<4;y++){
-	char c=(p>>(i*4))&15;
-	if((c&8)!=0) c-=16;
-	s.board[x*4+y]=c;
-	i++;
+      for(int y=0;y<5;y++){
+        char c=(p>>(i*4))&15;
+        if((c&8)!=0) c-=16;
+        s.board[x*5+y]=c;
+        i++;
       }
-    for(int j=0;j<6;j++){
-      s.stands[j]=(p>>(48+j*2))&3;
-    }
+    //for(int j=0;j<6;j++){
+    //  s.stands[j]=(p>>(48+j*2))&3;
+    //}
     s.turn=BLACK;
     return s;
   }
@@ -306,8 +313,8 @@ struct State{
   {
     State ret;
     for(int x=0;x<3;x++)
-      for(int y=0;y<4;y++)
-	ret.board[x*4+y]= -board[(2-x)*4+3-y];
+      for(int y=0;y<5;y++)
+        ret.board[x*5+y]= -board[(2-x)*5+4-y];
     for(int i=0;i<3;i++){
       ret.stands[i+3]=stands[i]; 
       ret.stands[i]=stands[i+3]; 
@@ -329,12 +336,16 @@ struct State{
   {
     State ret(*this);
     for(int x=0;x<3;x++)
-      for(int y=0;y<4;y++)
-	ret.board[x*4+y]= board[(2-x)*4+y];
+      for(int y=0;y<5;y++)
+        ret.board[x*5+y]= board[(2-x)*5+y];
     return ret;
   }
   /**
    * 黒番の盤面を64ビット整数に変換
+   * bit 59 - 48 : 48+2*jビットからの2ビットづつで stands[j]を表す
+   * bit 47 - 0  : 4*posビットからの4ビットずつで board[pos] を表す
+   *             : ptypeの下位4ビットなのでbit3がsetされている時は，
+   *             : WHITE用に補正
    */
   uint64 pack() const
   {
@@ -342,12 +353,12 @@ struct State{
     uint64 ret=0ull;
     int i=0;
     for(int x=0;x<3;x++)
-      for(int y=0;y<4;y++){
-	ret|=static_cast<uint64>(board[x*4+y]&15)<<(i*4);
-	i++;
+      for(int y=0;y<5;y++){
+        ret|=static_cast<uint64>(board[x*5+y]&15)<<(i*4);
+        i++;
       }
-    for(int j=0;j<6;j++)
-      ret|=static_cast<uint64>(stands[j])<<(48+j*2);
+    //for(int j=0;j<6;j++)
+    //  ret|=static_cast<uint64>(stands[j])<<(48+j*2);
     return ret;
   }
   /**
@@ -370,26 +381,26 @@ struct State{
    * 指定されたPlayerのlionを捜す
    */
   Point lion(Player p) const{
-    char pLion=Ptype::makePtype(p,Ptype::LION);
+    char pLion=Ptype::makePtype(p,Ptype::KING);
     for(int x=0;x<3;x++)
-      for(int y=0;y<4;y++)
-	if(pLion==board[x*4+y]) return Point(x,y);
+      for(int y=0;y<5;y++)
+        if(pLion==board[x*5+y]) return Point(x,y);
     std::cerr << *this << std::endl;
     std::cerr << "no lion" << std::endl;
-    throw InconsistentException();
+    throw NoLionException();
     return Point(0,0);
   }
   /**
    * Point pが盤面の内部かどうかを判定する
    */
   static bool isInside(Point p){
-    return 0<=p.real() && p.real()<=2 && 0<=p.imag() && p.imag()<=3;
+    return 0<=p.real() && p.real()<=2 && 0<=p.imag() && p.imag()<=4;
   }
   /**
    * 黒番のptypeがdir方向に動けるかどうかを判定する
    */
   static bool canMove(char ptype,int dir){
-    return ((1<<dir)&canMoves[ptype-Ptype::BABY])!=0;
+    return ((1<<dir)&canMoves[ptype-Ptype::SILVER])!=0;
   }
   /**
    * 黒番の盤面が手番の勝ちかどうかを判定する
@@ -402,10 +413,10 @@ struct State{
     for(int dir=0;dir<8;dir++){
       Point pos=pLion-directions[dir];
       if(!isInside(pos)) continue;
-      char ptype=board[pos.real()*4+pos.imag()];
+      char ptype=board[pos.real()*5+pos.imag()];
       //      std::cout << "dir=" << dir << ",pos=" << pos << ",ptype=" << ptype << std::endl;
       if(ptype>0 && canMove(ptype,dir))
-	return true;
+        return true;
     }
     return false;
   }
@@ -425,7 +436,7 @@ struct State{
     assert(!isWin());
     // can capture the opponent's lion
     Point pLion=lion(WHITE);
-    return pLion.imag() == 3;
+    return pLion.imag() == 4;
   }
   /**
    * 盤面が手番の負けかどうかを判定する
@@ -437,23 +448,24 @@ struct State{
   }
   /**
    * 駒の数があっていることを確認する
+   * 3*5では持ち駒が無いのでKingが２個あるか&&それぞれのコマが２個以上無いかだけチェックする
    */
   bool isConsistent() const{
-    vInt counts(6,0);
+    vInt counts(7,0);
     for(int x=0;x<3;x++)
-      for(int y=0;y<4;y++){
-	char ptype=board[x*4+y];
-	if(ptype<0) ptype= -ptype;
-	if(ptype==Ptype::CHICKEN) ptype=Ptype::BABY;
-	if(ptype>0) counts[ptype]++;
+      for(int y=0;y<5;y++){
+        char ptype=board[x*5+y];
+        if(ptype<0){
+          ptype = -ptype + Ptype::KING;//先後別々に集計
+        }
+        if(ptype>0) counts[ptype]++;
       }
-    if(counts[Ptype::LION]!=2) return false;
-    if(counts[Ptype::BABY]>=0 && stands[0]>=0 && stands[3]>=0 &&
-       counts[Ptype::BABY]+stands[0]+stands[3]!=2) return false;
-    if(counts[Ptype::ELEPHANT]>=0 && stands[1]>=0 && stands[4]>=0 &&
-       counts[Ptype::ELEPHANT]+stands[1]+stands[4]!=2) return false;
-    if(counts[Ptype::GIRAFFE]>=0 && stands[2]>=0 && stands[5]>=0 &&
-       counts[Ptype::GIRAFFE]+stands[2]+stands[5]!=2) return false;
+    if(counts[Ptype::KING]!=1) return false;
+    if(counts[Ptype::KING+Ptype::KING]!=1) return false;
+    if(counts[Ptype::SILVER]>1) return false;
+    if(counts[Ptype::SILVER+Ptype::KING]>1) return false;
+    if(counts[Ptype::GOLD]>1) return false;
+    if(counts[Ptype::GOLD+Ptype::KING]>1) return false;
     return true;
   }
 #if 0
@@ -507,6 +519,7 @@ struct State{
     for(size_t i=0;i<moves.size();i++){
       State news(*this);
       news.applyMove(moves[i]);
+      State s(news.normalize(),BLACK);
       ret.push_back(news.normalize());
     }
     return ret;
@@ -522,26 +535,25 @@ struct State{
     assert(!isLose());
     vMove ret;
     for(int x=0;x<3;x++)
-      for(int y=0;y<4;y++){
-	Point pos(x,y);
-	char ptype=board[x*4+y];
-	if(ptype==0){
-	  for(int i=0;i<3;i++)
-	    if(stands[i]>0){
-	      ret.push_back(Move(BLACK,STAND,makePosition(x,y),i+Ptype::BABY));
-	    }
-	}
-	if(ptype<=0){
-	  for(int dir=0;dir<8;dir++){
-	    Point pos1=pos-directions[dir];
-	    if(!isInside(pos1)) continue;
-	    char ptype1=board[pos1.real()*4+pos1.imag()];
-	    if(ptype1>0 && canMove(ptype1,dir)){
-	      if(ptype1==Ptype::BABY && y==0) ptype1=Ptype::CHICKEN;
-	      ret.push_back(Move(BLACK,makePosition(pos1.real(),pos1.imag()),makePosition(x,y),ptype1));
-	    }
-	  }
-	}
+      for(int y=0;y<5;y++){
+        Point pos(x,y);
+        char ptype=board[x*5+y];
+        //if(ptype==0){
+        //  for(int i=0;i<3;i++)
+        //    if(stands[i]>0){
+        //      ret.push_back(Move(BLACK,STAND,makePosition(x,y),i+Ptype::SILVER));
+        //    }
+        //}
+        if(ptype<=0){
+	        for(int dir=0;dir<8;dir++){
+	          Point pos1=pos-directions[dir];
+	          if(!isInside(pos1)) continue;
+	          char ptype1=board[pos1.real()*5+pos1.imag()];
+	          if(ptype1>0 && canMove(ptype1,dir)){
+	            ret.push_back(Move(BLACK,makePosition(pos1.real(),pos1.imag()),makePosition(x,y),ptype1));
+	          }
+	        }
+	      }
       }
     return ret;
   }
@@ -556,7 +568,7 @@ struct State{
       vMove rev=rev_s.nextMovesForBlack();
       vMove ret;
       for(size_t i=0;i<rev.size();i++)
-	ret.push_back(rev[i].rotateChangeTurn());
+        ret.push_back(rev[i].rotateChangeTurn());
       return ret;
     }
   }
@@ -581,23 +593,10 @@ struct State{
     if(move.player() != turn) return false;
     int ptype=move.ptype();
     int capture_ptype=board[move.to()];
-    if(move.from()==STAND){
-      if(stands[(turn==BLACK ? 0 : 3)+ptype-Ptype::BABY]==0) 
-	return false;
-      return capture_ptype==Ptype::EMPTY;
-    }
-    else{
-      int from_ptype=board[move.from()];
-      if(turn==WHITE) from_ptype= -from_ptype;
-//      std::cerr << "from_ptype=" << from_ptype << std::endl;
-      if(from_ptype<=0) return false;
-      if(from_ptype != ptype){
-	if(ptype!=Ptype::CHICKEN || from_ptype!=Ptype::BABY ||
-	   pos2Y(move.from()) != (turn==BLACK ? 1 : 2))
-	  return false;
-      }
-      return (turn==BLACK ? capture_ptype<=0 : capture_ptype>=0);
-    }
+    int from_ptype=board[move.from()];
+    if(turn==WHITE) from_ptype= -from_ptype;
+    if(from_ptype<=0) return false;
+    return (turn==BLACK ? capture_ptype<=0 : capture_ptype>=0);
   }
   /**
    * Stateにmoveをapplyして変化させる
@@ -606,21 +605,16 @@ struct State{
   {
     assert(isValid(move));
     assert(isValidWithGenerate(move));
+    //std::cerr << move << std::endl;
+    //std::cerr << "bofore" << std::endl;
+    //std::cerr << *this << std::endl;
     if(!isValid(move) || !isValidWithGenerate(move)){
       std::cerr << *this << std::endl;
       std::cerr << "invalidMove " << move << std::endl;
-      throw InconsistentException();
+      throw InvalidMoveException();
     }
-    if(move.from()==STAND){
-      int index=(turn==BLACK ? 0 : 3)+move.ptype()-Ptype::BABY;
-      assert(0<=index && index<6);
-      stands[index]--;      
-    }
-    else{
-      assert(move.ptype()==abs(board[move.from()]) ||
-	     move.ptype()==Ptype::CHICKEN && abs(board[move.from()])==Ptype::BABY);
-      board[move.from()]=Ptype::EMPTY;
-    }
+    assert(move.ptype()==abs(board[move.from()]));
+    board[move.from()]=Ptype::EMPTY;
     int capture_ptype=board[move.to()];
     int ptype=move.ptype();
     if(turn==WHITE) 
@@ -629,13 +623,13 @@ struct State{
       capture_ptype= -capture_ptype;
     assert(capture_ptype>=0);
     board[move.to()]=ptype;
-    if(capture_ptype!=Ptype::EMPTY){
-      if(capture_ptype==Ptype::CHICKEN) capture_ptype=Ptype::BABY;
-      stands[(turn==BLACK ? 0 : 3)+capture_ptype-Ptype::BABY]++;
-    }
     changeTurn();
+
+    //std::cerr << "after" << std::endl;
+    //std::cerr << *this << std::endl;
     if(!isConsistent()){
       std::cerr << *this << std::endl;
+      std::cerr << "Inconsistent" << std::endl;
       throw InconsistentException();
     }
   }

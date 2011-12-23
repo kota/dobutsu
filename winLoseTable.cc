@@ -94,9 +94,9 @@ void WinLoseTable::showSequence(State const& s) const
     if(getWinLose(index)==0){
       vMove moves=s.nextMoves();
       for(size_t i=0;i<moves.size();i++){
-	int wl,wlc;
-	wl=getWinLose(s,moves[i],wlc);
-	std::cerr << i << " : " << moves[i] << " " << wl << "(" << wlc << ")" << std::endl;
+        int wl,wlc;
+        wl=getWinLose(s,moves[i],wlc);
+        std::cerr << i << " : " << moves[i] << " " << wl << "(" << wlc << ")" << std::endl;
       }
     }
     return;
@@ -120,29 +120,29 @@ void WinLoseTable::showSequence(State const& s) const
 //	throw InconsistentException();
       }
       if(getWinLoseCount(index)-1==wlc){
-	std::cerr << "Move : " << moves[i] << " " << wl << "(" << wlc << ")" << std::endl;
-	State news(s);
-	news.applyMove(moves[i]);
-	showSequence(news);
-	break;
+        std::cerr << "Move : " << moves[i] << " " << wl << "(" << wlc << ")" << std::endl;
+        State news(s);
+        news.applyMove(moves[i]);
+        showSequence(news);
+        break;
       }
       else if(getWinLoseCount(index)-1<wlc){
-	throw InconsistentException();
+        throw InconsistentException();
       }
     }
     else{
       assert(getWinLose(index)==1);
       if(wl==-1){
-	if(getWinLoseCount(index)-1==wlc){
-	  std::cerr << "Move : " << moves[i] << " " << wl << "(" << wlc << ")" << std::endl;
-	  State news(s);
-	  news.applyMove(moves[i]);
-	  showSequence(news);
-	  break;
-	}
-	else if(getWinLoseCount(index)-1>wlc){
-	  throw InconsistentException();
-	}
+        if(getWinLoseCount(index)-1==wlc){
+          std::cerr << "Move : " << moves[i] << " " << wl << "(" << wlc << ")" << std::endl;
+          State news(s);
+          news.applyMove(moves[i]);
+          showSequence(news);
+          break;
+        }
+        else if(getWinLoseCount(index)-1>wlc){
+          throw InconsistentException();
+        }
       }
     }
   }

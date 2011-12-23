@@ -1,1 +1,7 @@
 *.o
+*.txt
+*.dat
+checkState
+checkcsa
+makeAllState
+testAll
